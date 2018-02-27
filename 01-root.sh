@@ -57,6 +57,6 @@ ln -sf /opt/activemq/bin/activemq /etc/init.d/
 /etc/init.d/activemq create /etc/default/activemq
 chown root:nogroup /etc/default/activemq
 chmod 600 /etc/default/activemq
-sed -i 's/managementContext createConnector="false"/managementContext createConnector="true"/g' /opt/activemq/conf/activemq.xml
+sed -i 's/managementContext createConnector="false"/managementContext createConnector="true"/g' /etc/default/activemq/conf/activemq.xml
 ln -s /etc/init.d/activemq /usr/bin/activemq
 /etc/init.d/activemq start
