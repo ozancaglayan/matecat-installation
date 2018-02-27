@@ -15,6 +15,7 @@ ln -sf `which nodejs` /usr/bin/node
 
 # Add matecat user
 adduser --disabled-password --gecos "" matecat
+usermod -G www-data matecat
 
 # Configure apache
 # TODO: ServerName??
