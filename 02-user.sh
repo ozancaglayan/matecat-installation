@@ -1,5 +1,5 @@
 #!/bin/bash
-source ./env.sh
+source ./vars.sh
 
 
 #npm install -g grunt grunt-cli

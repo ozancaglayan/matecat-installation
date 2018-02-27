@@ -1,5 +1,5 @@
 #!/bin/bash
-source ./env.sh
+source ./vars.sh
 
 # Add PPA for php5.6
 apt-add-repository -y ppa:ondrej/php
