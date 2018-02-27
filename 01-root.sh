@@ -60,3 +60,10 @@ chmod 600 /etc/default/activemq
 sed -i 's/managementContext createConnector="false"/managementContext createConnector="true"/g' /etc/default/activemq/conf/activemq.xml
 ln -s /etc/init.d/activemq /usr/bin/activemq
 /etc/init.d/activemq start
+
+# Setup rc.local
+sed -i 's#exit 0##g' /etc/rc.local
+echo "screen -d -m -S 'node' node ${WWWDIR}/nodejs/server.js" >> /etc/rc.local
+echo "/usr/bin/activemq start" >> /etc/rc.local
+echo "/bin/bash ${WWWDIR}/daemons/restartAnalysis.sh" >> /etc/rc.local
+echo "exit 0" >> /etc/rc.local
