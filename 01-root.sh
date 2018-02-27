@@ -44,5 +44,12 @@ rm /tmp/matecat.sql
 npm install -g grunt-cli
 
 # Download activemq
-wget http://apache.mirrors.lucidnetworks.net/activemq/5.15.3/apache-activemq-5.15.3-bin.tar.gz
-tar xvf apache-activemq-5.15.3-bin.tar.gz
+pushd /tmp
+wget http://archive.apache.org/dist/activemq/5.13.2/apache-activemq-5.13.2-bin.tar.gz
+tar xzf apache-activemq-5.13.2-bin.tar.gz && rm apache-activemq-5.13.2-bin.tar.gz
+mv apache-activemq-5.13.2 /opt
+ln -sf /opt/apache-activemq-5.13.2/ /opt/activemq
+adduser -system activemq
+sed -i "s#activemq:/bin/false#activemq:/bin/bash#g" /etc/passwd
+chown -R activemq: /opt/apache-activemq-5.13.2/
+ln -sf /opt/activemq/bin/activemq /etc/init.d/
