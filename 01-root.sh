@@ -1,5 +1,5 @@
 #!/bin/bash
-DBPASS="dbmatecat1234"
+source ./env.sh
 
 # Add PPA for php5.6
 apt-add-repository -y ppa:ondrej/php
