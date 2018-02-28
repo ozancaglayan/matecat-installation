@@ -5,8 +5,8 @@ source ./vars.sh
 apt-add-repository -y ppa:ondrej/php
 
 apt -y update
-apt install -y build-essential monit git curl wget net-tools \
-	apache2 mysql-client mysql-server psmisc htop screen openjdk-8-jre-headless \
+apt install -y monit git curl wget net-tools \
+	apache2 mysql-client mysql-server psmisc htop screen openjdk-7-jre-headless \
 	redis-server php5.6 php5.6-xdebug php5.6-mysql libapache2-mod-php5.6 \
 	php5.6-curl php5.6-json php5.6-xml php5.6-xml \
 	nodejs npm unzip maven
