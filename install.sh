@@ -7,7 +7,6 @@ MATECAT_FILTERS_COMMIT="82f8210448"
 RUNROOT="sudo -i -u root -- "
 
 # Clone MateCat
-pushd ~ 
 if [[ ! -d "MateCat" ]]; then
   git clone https://github.com/matecat/MateCat.git ${WWWDIR}
   git checkout $MATECAT_COMMIT
@@ -56,7 +55,7 @@ fi
 
 # Prepare node & php stuff
 if [[ ! -d ${WWWDIR}/nodejs/node_modules ]]; then
-  pushd ~/MateCat/nodejs
+  pushd ${WWWDIR}/nodejs
   npm install
   cp config.ini.sample config.ini
   # Change log file name to reflect that its nodejs server  
@@ -67,7 +66,7 @@ if [[ ! -d ${WWWDIR}/nodejs/node_modules ]]; then
 fi
 
 if [[ ! -d ${WWWDIR}/support_scripts/grunt/node_modules ]]; then
-  pushd ~/MateCat/support_scripts/grunt
+  pushd ${WWWDIR}/support_scripts/grunt
   npm install
   grunt deploy
 fi
