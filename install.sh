@@ -8,6 +8,13 @@ MATECAT_COMMIT="0f3f3ecaa45"
 MATECAT_FILTERS_COMMIT="82f8210448"
 RUNROOT="sudo -i -u root -- "
 
+# Install packages
+which htop &> /dev/null
+if [[ $? == "1" ]]; then
+  echo "Installing packages"
+  $RUNROOT `realpath install-pkgs.sh`
+fi
+
 # Clone MateCat
 if [[ ! -d ${WWWDIR} ]]; then
   git clone https://github.com/matecat/MateCat.git ${WWWDIR}
@@ -17,14 +24,15 @@ if [[ ! -d ${WWWDIR} ]]; then
 fi
 
 # Clone Filters
-if [[ ! -d "${WWWDIR}/Filters" ]]; then
-  git clone https://github.com/matecat/MateCat-Filters.git "${WWWDIR}/Filters"
-  pushd "${WWWDIR}/Filters"
+if [[ ! -d "/home/${UNIXUSER}/MateCat-Filters" ]]; then
+  git clone https://github.com/matecat/MateCat-Filters.git "/home/${UNIXUSER}/MateCat-Filters"
+  pushd "/home/${UNIXUSER}/MateCat-Filters"
   git checkout $MATECAT_FILTERS_COMMIT
   popd
 fi
 
-if [[ ! -d "${WWWDIR}/Filters/okapi" ]]; then
+# FIXME: Enable this afterwards
+if [[ -d "${WWWDIR}/Filters/okapi" ]]; then
   pushd "${WWWDIR}/Filters"
   # Clone okapi
   git clone https://bitbucket.org/okapiframework/okapi.git
@@ -53,13 +61,6 @@ if [[ ! -d /var/log/matecat ]]; then
   sed -i 's/^php_value error_log.*$/php_value error_log \/var\/log\/matecat\/php_errors.log/' ${WWWDIR}/.htaccess
 fi
 
-# Install packages
-which htop &> /dev/null
-if [[ $? == "1" ]]; then
-  echo "Installing packages"
-  $RUNROOT `realpath install-pkgs.sh` 
-fi
-
 # Check PHP version
 PHPVER=`php --version | grep "^PHP" | awk '{ print $2 }'`
 if [[ ! $PHPVER =~ ^5.6.* ]]; then
@@ -71,15 +72,14 @@ fi
 which activemq &> /dev/null
 if [[ $? == "1" ]]; then
   echo "Installing ActiveMQ"
-  $RUNROOT `realpath activemq.sh` 
+  $RUNROOT `realpath activemq.sh`
 fi
 
 # Configure services
 grep "www-data.*${UNIXUSER}" /etc/group &> /dev/null
 if [[ $? == "1" ]]; then
   echo "Configuring services"
-  $RUNROOT `realpath configure.sh` 
-
+  $RUNROOT `realpath configure.sh`
 
   # set DB password for matecat and import SQL
   DUMP_DBPASS=1
@@ -88,6 +88,7 @@ if [[ $? == "1" ]]; then
   echo '(You will be prompted root password for mysql root account)'
   mysql -uroot -p < /tmp/matecat.sql
   rm /tmp/matecat.sql
+  echo "Your database password for user ${DBUSER} is: ${DBPASS}"
 fi
 
 # Prepare node & php stuff
@@ -95,8 +96,8 @@ if [[ ! -f ${WWWDIR}/nodejs/config.ini ]]; then
   pushd ${WWWDIR}/nodejs
   npm install
   cp config.ini.sample config.ini
-  # Change log file name to reflect that its nodejs server  
-  # NOTE: log level is debug!   
+  # Change log file name to reflect that its nodejs server
+  # NOTE: log level is debug!
   sed -i 's/log\/server\.log/\/var\/log\/matecat\/nodejs_server.log/' config.ini
   popd
 fi
@@ -118,10 +119,13 @@ fi
 
 # Add to rc.local
 # NOTE: need systemd service
-grep nodejs /etc/rc.local &> /dev/null
+grep activemq /etc/rc.local &> /dev/null
 if [[ $? == "1" ]]; then
-  echo "Adding nodejs server to rc.local"
-  STR="echo screen -d -m -S \'node\' node ${WWWDIR}/nodejs/server.js >> /etc/rc.local"
+  echo "Adding activemq to rc.local"
+  sudo -u root sh -c "sed -i 's#exit 0##g' /etc/rc.local"
+  STR="echo /usr/bin/activemq start >> /etc/rc.local"
+  sudo -u root sh -c "$STR"
+  STR="echo sleep 3 >> /etc/rc.local"
   sudo -u root sh -c "$STR"
 fi
 
@@ -131,6 +135,13 @@ if [[ $? == "1" ]]; then
   STR2="echo exit 0 >> /etc/rc.local"
   sudo -u root sh -c "$STR1"
   sudo -u root sh -c "$STR2"
+fi
+
+grep nodejs /etc/rc.local &> /dev/null
+if [[ $? == "1" ]]; then
+  echo "Adding nodejs server to rc.local"
+  STR="echo screen -d -m -S \'node\' node ${WWWDIR}/nodejs/server.js >> /etc/rc.local"
+  sudo -u root sh -c "$STR"
 fi
 
 if [[ ! -f /etc/apache2/sites-available/matecat.conf ]]; then
@@ -155,11 +166,14 @@ fi
 sudo -u root -- chown -R www-data: `realpath ${WWWDIR}`
 sudo -u root -- chmod 755 ${WWWDIR}
 
+echo "Clearing previous logs"
+$RUNROOT rm -rf /var/log/matecat/*
+$RUNROOT rm -rf /var/log/apache2/matecat*
+
 echo "Restarting services"
 $RUNROOT service rc.local restart
 $RUNROOT service apache2 restart
 $RUNROOT systemctl restart mysql.service
-$RUNROOT `realpath ./clear-logs.sh`
 
 if [[ ! -z $DUMP_DBPASS ]]; then
   echo "Your database password for user ${DBUSER} is: ${DBPASS}"

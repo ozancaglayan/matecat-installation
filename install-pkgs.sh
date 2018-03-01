@@ -1,7 +1,9 @@
 #!/bin/bash
 
 # Add PPA for php5.6
-apt-add-repository -y ppa:ondrej/php
+if [[ ! -f /etc/apt/sources.list.d/ondrej-ubuntu-php-xenial.list ]]; then
+  apt-add-repository -y ppa:ondrej/php
+fi
 
 apt -y update
 apt -y dist-upgrade

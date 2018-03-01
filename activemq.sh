@@ -15,10 +15,3 @@ chown root:nogroup /etc/default/activemq
 chmod 600 /etc/default/activemq
 sed -i 's/managementContext createConnector="false"/managementContext createConnector="true"/g' /etc/default/activemq/conf/activemq.xml
 ln -s /etc/init.d/activemq /usr/bin/activemq
-
-# Setup rc.local
-sed -i 's#exit 0##g' /etc/rc.local
-echo "/usr/bin/activemq start" >> /etc/rc.local
-echo "sleep 1" >> /etc/rc.local
-
-/etc/init.d/activemq start
