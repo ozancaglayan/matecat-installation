@@ -7,16 +7,49 @@ MATECAT_FILTERS_COMMIT="82f8210448"
 RUNROOT="sudo -i -u root -- "
 
 # Clone MateCat
-if [[ ! -d "MateCat" ]]; then
+if [[ ! -d ${WWWDIR} ]]; then
   git clone https://github.com/matecat/MateCat.git ${WWWDIR}
+  pushd ${WWWDIR}
   git checkout $MATECAT_COMMIT
+  popd
 fi
 
-if [[ ! -d "MateCat-Filters" ]]; then
-  git clone https://github.com/matecat/MateCat-Filters.git
+# Clone Filters
+if [[ ! -d "${WWWDIR}/Filters" ]]; then
+  git clone https://github.com/matecat/MateCat-Filters.git "${WWWDIR}/Filters"
+  pushd "${WWWDIR}/Filters"
   git checkout $MATECAT_FILTERS_COMMIT
+  popd
 fi
-popd
+
+if [[ ! -d "${WWWDIR}/Filters/okapi" ]]; then
+  pushd "${WWWDIR}/Filters"
+  # Clone okapi
+  git clone https://bitbucket.org/okapiframework/okapi.git
+  pushd okapi
+  COMMIT=$(grep 'okapi.commit' pom.xml | sed -r 's/.*<.*>(.*)<.*>/\1/')
+  git checkout $COMMIT
+  # Build OKAPI
+  mvn clean install -DskipTests=true
+  popd
+  # Build filters
+  pushd filters
+  mvn clean package -DskipTests=true
+  cp src/main/resources/config.sample.properties target/config.properties
+  popd
+  popd
+fi
+
+# Create global log folder
+if [[ ! -d /var/log/matecat ]]; then
+  echo "Preparing /var/log/matecat"
+  $RUNROOT mkdir /var/log/matecat
+  $RUNROOT chown www-data: /var/log/matecat
+  # Change default log repository
+  sed -i '/INIT.*LOG_REPOSITORY/s/=.*$/= \"\/var\/log\/matecat\";/' ${WWWDIR}/inc/Bootstrap.php
+  # Change Apache php error log
+  sed -i 's/^php_value error_log.*$/php_value error_log \/var\/log\/matecat\/php_errors.log/' ${WWWDIR}/.htaccess
+fi
 
 # Install packages
 which htop &> /dev/null
@@ -54,21 +87,21 @@ if [[ $? == "1" ]]; then
 fi
 
 # Prepare node & php stuff
-if [[ ! -d ${WWWDIR}/nodejs/node_modules ]]; then
+if [[ ! -f ${WWWDIR}/nodejs/config.ini ]]; then
   pushd ${WWWDIR}/nodejs
   npm install
   cp config.ini.sample config.ini
   # Change log file name to reflect that its nodejs server  
-  # NOTE: Local log file in the conf!
   # NOTE: log level is debug!   
-  sed -i 's/server\.log/nodejs_server.log/' config.ini
-
+  sed -i 's/log\/server\.log/\/var\/log\/matecat\/nodejs_server.log/' config.ini
+  popd
 fi
 
 if [[ ! -d ${WWWDIR}/support_scripts/grunt/node_modules ]]; then
   pushd ${WWWDIR}/support_scripts/grunt
   npm install
   grunt deploy
+  popd
 fi
 
 # Install PHP stuff
@@ -76,6 +109,7 @@ if [[ ! -f ${WWWDIR}/composer.phar ]]; then
   pushd $WWWDIR
   curl -L https://getcomposer.org/installer | php
   php composer.phar install
+  popd
 fi
 
 # Add to rc.local
@@ -109,6 +143,8 @@ if [[ ! -f ${WWWDIR}/inc/config.ini ]]; then
   cp config.ini.sample config.ini
   sed -i "s/^DB_PASS.*$/DB_PASS = \"${DBPASS}\"/" config.ini
   sed -i "s:^STORAGE_DIR.*$:STORAGE_DIR = \"${STORAGEDIR}\":" config.ini
+  sed -i "s:^FILTERS_ADDRESS.*$:FILTERS_ADDRESS = \"http\://localhost\:8732\":" config.ini
+  popd
 fi
 
 # Give MateCat to www-data
