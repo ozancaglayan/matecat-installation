@@ -1,6 +1,9 @@
 #!/bin/bash
 source ./vars.sh
 
+echo "Your database password for user ${DBUSER} is: ${DBPASS}"
+exit
+
 # Checkout specific commits to ensure reproducibility
 MATECAT_COMMIT="0f3f3ecaa45"
 MATECAT_FILTERS_COMMIT="82f8210448"
