@@ -146,7 +146,7 @@ if [[ $? == "1" ]]; then
 fi
 
 if [[ ! -f /etc/apache2/sites-available/matecat.conf ]]; then
-  sed "s#@@@path@@@#${WWWDIR}#" < ./matecat-vhost.conf > /tmp/matecat.conf
+  sed "s#@@@path@@@#${WWWDIR}#" < data/matecat-vhost.conf > /tmp/matecat.conf
   sudo -u root sh -c "mv /tmp/matecat.conf /etc/apache2/sites-available"
   $RUNROOT a2dissite 000-default
   $RUNROOT a2ensite matecat.conf
