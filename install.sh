@@ -1,8 +1,7 @@
 #!/bin/bash
 source ./vars.sh
 
-echo "Your database password for user ${DBUSER} is: ${DBPASS}"
-exit
+DUMP_DBPASS=
 
 # Checkout specific commits to ensure reproducibility
 MATECAT_COMMIT="0f3f3ecaa45"
@@ -81,7 +80,9 @@ if [[ $? == "1" ]]; then
   echo "Configuring services"
   $RUNROOT `realpath configure.sh` 
 
+
   # set DB password for matecat and import SQL
+  DUMP_DBPASS=1
   SQLFILE="${WWWDIR}/INSTALL/matecat.sql"
   sed "s/matecat01/${DBPASS}/g" < $SQLFILE > /tmp/matecat.sql
   echo '(You will be prompted root password for mysql root account)'
@@ -159,3 +160,7 @@ $RUNROOT service rc.local restart
 $RUNROOT service apache2 restart
 $RUNROOT systemctl restart mysql.service
 $RUNROOT `realpath ./clear-logs.sh`
+
+if [[ ! -z $DUMP_DBPASS ]]; then
+  echo "Your database password for user ${DBUSER} is: ${DBPASS}"
+fi
