@@ -82,6 +82,7 @@ if [[ $? == "1" ]]; then
   $RUNROOT `realpath configure.sh`
 
   # set DB password for matecat and import SQL
+  DBPASS=`cat /dev/urandom | LC_ALL=C tr -dc 'a-zA-Z0-9' | fold -w ${1:-10} | head -n 1`
   DUMP_DBPASS=1
   SQLFILE="${WWWDIR}/INSTALL/matecat.sql"
   sed "s/matecat01/${DBPASS}/g" < $SQLFILE > /tmp/matecat.sql
