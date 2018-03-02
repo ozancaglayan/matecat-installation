@@ -1,0 +1,18 @@
+[Unit]
+Description=Matecat Filters
+After=network.target
+
+[Install]
+WantedBy=multi-user.target
+
+[Service]
+User=www-data
+Group=www-data
+TimeoutStopSec=5
+WorkingDirectory=@FILTERS_DIR@
+# For proxy detection
+EnvironmentFile=/etc/environment
+ExecStart=/usr/bin/java -cp ".:filters-1.2.3.jar" com.matecat.converter.Main
+ExecStartPost=/bin/sleep 3
+ExecStop=/bin/kill $MAINPID
+Restart=on-failure
