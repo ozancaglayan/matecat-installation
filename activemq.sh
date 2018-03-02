@@ -15,3 +15,6 @@ chown root:nogroup /etc/default/activemq
 chmod 600 /etc/default/activemq
 sed -i 's/managementContext createConnector="false"/managementContext createConnector="true"/g' /etc/default/activemq/conf/activemq.xml
 ln -s /etc/init.d/activemq /usr/bin/activemq
+
+# Increase memory limits
+sed -i 's/^#ACTIVEMQ_OPTS_MEMORY.*$/ACTIVEMQ_OPTS_MEMORY=\"-Xms2G -Xmx4G\"/' /opt/activemq/bin/env
