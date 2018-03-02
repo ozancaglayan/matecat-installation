@@ -1,0 +1,59 @@
+diff --git a/inc/Bootstrap.php b/inc/Bootstrap.php
+index 0b29914..fd851b3 100644
+--- a/inc/Bootstrap.php
++++ b/inc/Bootstrap.php
+@@ -62,7 +62,7 @@ class Bootstrap {
+ 
+         date_default_timezone_set( INIT::$TIME_ZONE );
+ 
+-        INIT::$LOG_REPOSITORY                  = INIT::$STORAGE_DIR . "/log_archive";
++        INIT::$LOG_REPOSITORY                  = "/var/log/matecat";
+         INIT::$UPLOAD_REPOSITORY               = INIT::$STORAGE_DIR . "/upload";
+         INIT::$FILES_REPOSITORY                = INIT::$STORAGE_DIR . "/files_storage/files";
+         INIT::$CACHE_REPOSITORY                = INIT::$STORAGE_DIR . "/files_storage/cache";
+diff --git a/inc/INIT.php b/inc/INIT.php
+index d6158e3..84b5a5a 100644
+--- a/inc/INIT.php
++++ b/inc/INIT.php
+@@ -179,7 +179,7 @@ class INIT {
+      * In short: please turn it off only if strictly necessary :)
+      * @var bool
+      */
+-    public static $ENABLE_OUTSOURCE = true;
++    public static $ENABLE_OUTSOURCE = false;
+ 
+     /**
+      * MateCat Filters configuration
+@@ -215,7 +215,7 @@ class INIT {
+     public static $DEFAULT_TM_KEY = '' ;
+ 
+ 
+-    public static $ENABLED_BROWSERS = array( 'applewebkit', 'chrome', 'safari' ); //, 'firefox');
++    public static $ENABLED_BROWSERS = array( 'applewebkit', 'chrome', 'safari', 'firefox');
+ 
+     // sometimes the browser declare to be Mozilla but does not provide a valid Name (e.g. Safari).
+     // This occurs especially in mobile environment. As an example, when you try to open a link from within
+diff --git a/lib/Utils/AsyncTasks/Workers/MailWorker.php b/lib/Utils/AsyncTasks/Workers/MailWorker.php
+index d8c21dc..34fe7b2 100644
+--- a/lib/Utils/AsyncTasks/Workers/MailWorker.php
++++ b/lib/Utils/AsyncTasks/Workers/MailWorker.php
+@@ -35,7 +35,7 @@ class MailWorker extends AbstractWorker {
+         $this->_checkForReQueueEnd( $queueElement );
+ 
+         $mail = new PHPMailer();
+-
++        $mail->SMTPAutoTLS = false;
+         $mail->isSMTP();
+ 
+         $mail->Host     = $queueElement->params[ 'Host' ];
+diff --git a/.htaccess b/.htaccess
+index b5518d7..5b5264b 100644
+--- a/.htaccess
++++ b/.htaccess
+@@ -117,5 +117,5 @@ Header always append X-XSS-Protection "1; mode=block"
+ Header set Access-Control-Allow-Origin "*"
+ php_value display_errors 0
+ php_value log_errors 1
+-php_value error_log storage/log_archive/php_errors.txt
++php_value error_log /var/log/matecat/php_errors.log
+ php_value short_open_tag on

@@ -1,6 +1,10 @@
 #!/bin/bash
 source ./vars.sh
 
+SYSTEMD_NODEJS="/etc/systemd/system/matecat-nodejs.service"
+SYSTEMD_TM="/etc/systemd/system/matecat-tmanalysis.service"
+SYSTEMD_FAST="/etc/systemd/system/matecat-fastanalysis.service"
+SYSTEMD_ACTIVEMQ="/etc/systemd/system/matecat-activemq.service"
 DUMP_DBPASS=
 
 # Checkout specific commits to ensure reproducibility
@@ -31,6 +35,9 @@ if [[ ! -d "/home/${UNIXUSER}/MateCat-Filters" ]]; then
   popd
 fi
 
+# Reset permissions before
+sudo -u root -- chown -R ${UNIXUSER}: `realpath ${WWWDIR}`
+
 # FIXME: Enable this afterwards
 if [[ -d "${WWWDIR}/Filters/okapi" ]]; then
   pushd "${WWWDIR}/Filters"
@@ -55,10 +62,6 @@ if [[ ! -d /var/log/matecat ]]; then
   echo "Preparing /var/log/matecat"
   $RUNROOT mkdir /var/log/matecat
   $RUNROOT chown www-data: /var/log/matecat
-  # Change default log repository
-  sed -i '/INIT.*LOG_REPOSITORY/s/=.*$/= \"\/var\/log\/matecat\";/' ${WWWDIR}/inc/Bootstrap.php
-  # Change Apache php error log
-  sed -i 's/^php_value error_log.*$/php_value error_log \/var\/log\/matecat\/php_errors.log/' ${WWWDIR}/.htaccess
 fi
 
 # Check PHP version
@@ -75,15 +78,48 @@ if [[ $? == "1" ]]; then
   $RUNROOT `realpath activemq.sh`
 fi
 
+if [[ ! -f ${WWWDIR}/inc/task_manager_config.ini ]]; then
+  pushd ${WWWDIR}/inc
+  cp task_manager_config.ini.sample task_manager_config.ini
+  popd
+fi
+
+if [[ ! -f ${WWWDIR}/inc/config.ini ]]; then
+  PATCHFILE=`realpath data/matecat.patch`
+  pushd ${WWWDIR}/inc
+  cp config.ini.sample config.ini
+  sed -i "s:^CLI_HTTP_HOST.*$:CLI_HTTP_HOST = \"http\://${SERVER}\":" config.ini
+  sed -i "s:^STORAGE_DIR.*$:STORAGE_DIR = \"${STORAGEDIR}\":" config.ini
+  sed -i "s:^FILTERS_ADDRESS.*$:FILTERS_ADDRESS = \"http\://localhost\:8732\":" config.ini
+
+  # Configure mail
+  sed -i "s:matecat\.loc:${SERVER}:" config.ini
+
+  # Add additional stuff
+  echo "MAILER_FROM = 'cattool@${SERVER}'" >> config.ini
+  echo "MAILER_RETURN_PATH = 'no-reply@${SERVER}'" >> config.ini
+  echo "FAST_ANALYSIS_MEMORY_LIMIT = '4096M'" >> config.ini
+
+  cd ..
+  echo 'Patching MateCat configuration files.'
+  patch -p1 < $PATCHFILE
+  popd
+fi
+
 # Configure services
 grep "www-data.*${UNIXUSER}" /etc/group &> /dev/null
 if [[ $? == "1" ]]; then
   echo "Configuring services"
   $RUNROOT `realpath configure.sh`
 
-  # set DB password for matecat and import SQL
-  DBPASS=`cat /dev/urandom | LC_ALL=C tr -dc 'a-zA-Z0-9' | fold -w ${1:-10} | head -n 1`
   DUMP_DBPASS=1
+
+  # Generate DBPASS
+  DBPASS=`cat /dev/urandom | LC_ALL=C tr -dc 'a-zA-Z0-9' | fold -w ${1:-10} | head -n 1`
+
+  # set DB password for matecat and import SQL
+  sed -i "s/^DB_PASS.*$/DB_PASS = \"${DBPASS}\"/" ${WWWDIR}/inc/config.ini
+
   SQLFILE="${WWWDIR}/INSTALL/matecat.sql"
   sed "s/matecat01/${DBPASS}/g" < $SQLFILE > /tmp/matecat.sql
   echo '(You will be prompted root password for mysql root account)'
@@ -97,7 +133,6 @@ if [[ ! -f ${WWWDIR}/nodejs/config.ini ]]; then
   pushd ${WWWDIR}/nodejs
   npm install
   cp config.ini.sample config.ini
-  # Change log file name to reflect that its nodejs server
   # NOTE: log level is debug!
   sed -i 's/log\/server\.log/\/var\/log\/matecat\/nodejs_server.log/' config.ini
   popd
@@ -118,32 +153,15 @@ if [[ ! -f ${WWWDIR}/composer.phar ]]; then
   popd
 fi
 
-# Add to rc.local
-# NOTE: need systemd service
-grep activemq /etc/rc.local &> /dev/null
-if [[ $? == "1" ]]; then
-  echo "Adding activemq to rc.local"
-  sudo -u root sh -c "sed -i 's#exit 0##g' /etc/rc.local"
-  STR="echo /usr/bin/activemq start >> /etc/rc.local"
-  sudo -u root sh -c "$STR"
-  STR="echo sleep 3 >> /etc/rc.local"
-  sudo -u root sh -c "$STR"
-fi
-
-grep restartAnalysis /etc/rc.local &> /dev/null
-if [[ $? == "1" ]]; then
-  STR1="echo /bin/bash ${WWWDIR}/daemons/restartAnalysis.sh >> /etc/rc.local"
-  STR2="echo exit 0 >> /etc/rc.local"
-  sudo -u root sh -c "$STR1"
-  sudo -u root sh -c "$STR2"
-fi
-
-grep nodejs /etc/rc.local &> /dev/null
-if [[ $? == "1" ]]; then
-  echo "Adding nodejs server to rc.local"
-  STR="echo screen -d -m -S \'node\' node ${WWWDIR}/nodejs/server.js >> /etc/rc.local"
-  sudo -u root sh -c "$STR"
-fi
+# check with systemd
+for SYSTEMD in $SYSTEMD_ACTIVEMQ $SYSTEMD_NODEJS $SYSTEMD_FAST $SYSTEMD_TM; do
+  echo "Adding/updating $SYSTEMD service"
+  sudo -u root sh -c "sed \"s#@WWWDIR@#${WWWDIR}#g\" < data/`basename $SYSTEMD` > ${SYSTEMD}"
+  $RUNROOT chmod 664 $SYSTEMD
+  $RUNROOT systemctl enable `basename $SYSTEMD`
+  $RUNROOT systemctl start `basename $SYSTEMD`
+done
+$RUNROOT systemctl daemon-reload
 
 if [[ ! -f /etc/apache2/sites-available/matecat.conf ]]; then
   sed "s#@@@path@@@#${WWWDIR}#" < data/matecat-vhost.conf > /tmp/matecat.conf
@@ -153,14 +171,13 @@ if [[ ! -f /etc/apache2/sites-available/matecat.conf ]]; then
   $RUNROOT service apache2 restart
 fi
 
-if [[ ! -f ${WWWDIR}/inc/config.ini ]]; then
-  pushd ${WWWDIR}/inc
-  cp task_manager_config.ini.sample task_manager_config.ini
-  cp config.ini.sample config.ini
-  sed -i "s/^DB_PASS.*$/DB_PASS = \"${DBPASS}\"/" config.ini
-  sed -i "s:^STORAGE_DIR.*$:STORAGE_DIR = \"${STORAGEDIR}\":" config.ini
-  sed -i "s:^FILTERS_ADDRESS.*$:FILTERS_ADDRESS = \"http\://localhost\:8732\":" config.ini
-  popd
+# Configure proxy for PHP
+PHP_PROXY="/etc/php/5.6/cli/proxy_setup.php"
+if [[ ! -z ${HTTP_PROXY} ]] && [[ ! -f ${PHP_PROXY} ]]; then
+    echo "Found proxy ${HTTP_PROXY}"
+    PROXY_STR=`echo ${HTTP_PROXY} | sed 's#https#tcp#; s#http#tcp#'`
+    sudo -u root sh -c "sed \"s#HTTP_PROXY_STR#${PROXY_STR}#; s#HTTPS_PROXY_STR#${PROXY_STR}#\" < data/proxy.php > ${PHP_PROXY}"
+    sudo -u root sh -c 'echo auto_prepend_file = \"/etc/php/5.6/cli/proxy_setup.php\" >> /etc/php/5.6/cli/php.ini'
 fi
 
 # Give MateCat to www-data
@@ -172,9 +189,7 @@ $RUNROOT rm -rf /var/log/matecat/*
 $RUNROOT rm -rf /var/log/apache2/matecat*
 
 echo "Restarting services"
-$RUNROOT service rc.local restart
-$RUNROOT service apache2 restart
-$RUNROOT systemctl restart mysql.service
+$RUNROOT systemctl restart --all apache2* matecat* mysql*
 
 if [[ ! -z $DUMP_DBPASS ]]; then
   echo "Your database password for user ${DBUSER} is: ${DBPASS}"
