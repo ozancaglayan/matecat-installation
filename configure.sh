@@ -14,11 +14,11 @@ usermod -a -G www-data ${UNIXUSER}
 echo "short_open_tag = On" >> /etc/php/5.6/cli/php.ini
 echo "memory_limit = 4096M" >> /etc/php/5.6/cli/php.ini
 a2enmod rewrite filter deflate headers expires proxy_http.load
-service apache2 restart
+
+grep -i 'proxy.*=' /etc/environment | sed -r 's/(.*)/export \1/g' >> /etc/apache2/envvars
 
 # Configure Redis
 sed -i 's/bind 127.0.0.1/bind 0.0.0.0/g' /etc/redis/redis.conf
-systemctl restart redis-server.service
 
 # Configure MySQL
 # See: https://github.com/matecat/MateCat/issues/768
