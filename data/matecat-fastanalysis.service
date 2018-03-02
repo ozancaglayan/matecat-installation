@@ -1,0 +1,15 @@
+[Unit]
+Description=Matecat FastAnalysis
+After=network.target
+
+[Install]
+WantedBy=multi-user.target
+
+[Service]
+TimeoutStopSec=10
+User=www-data
+Group=www-data
+# For proxy detection
+EnvironmentFile=/etc/environment
+ExecStart=/usr/bin/php @WWWDIR@/daemons/FastAnalysis.php @WWWDIR@/inc/task_manager_config.ini
+Restart=on-failure

@@ -1,0 +1,16 @@
+[Unit]
+Description=Matecat TmAnalysis
+After=network.target
+
+[Install]
+WantedBy=multi-user.target
+
+[Service]
+Type=simple
+TimeoutStopSec=10
+User=www-data
+Group=www-data
+# For proxy detection
+EnvironmentFile=/etc/environment
+ExecStart=/usr/bin/php @WWWDIR@/daemons/TmAnalysis.php @WWWDIR@/inc/task_manager_config.ini
+Restart=on-failure

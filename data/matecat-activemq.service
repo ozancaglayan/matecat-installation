@@ -1,0 +1,17 @@
+[Unit]
+Description=Matecat ActiveMQ
+After=network.target
+
+[Install]
+WantedBy=multi-user.target
+
+[Service]
+Type=forking
+PIDFile=/opt/apache-activemq-5.13.2/data/activemq.pid
+
+# For proxy detection
+EnvironmentFile=/etc/environment
+ExecStart=/usr/bin/activemq start
+ExecStartPost=/bin/sleep 3
+ExecStop=/usr/bin/activemq stop
+Restart=on-failure
