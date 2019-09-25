@@ -217,7 +217,7 @@ if [[ $? == "1" ]]; then
   sed -i "s/^DB_PASS.*$/DB_PASS = \"${DBPASS}\"/" ${WWWDIR}/inc/config.ini
 
   SQLFILE="${WWWDIR}/INSTALL/matecat.sql"
-  sed "s/matecat01/${DBPASS}/g" < $SQLFILE > /tmp/matecat.sql
+  cat $SQLFILE | sed "s/matecat01/${DBPASS}/g" | sed "s/matecat02/${DBPASS}/g" > /tmp/matecat.sql
   echo '(You will be prompted root password for mysql root account)'
   mysql -uroot -p < /tmp/matecat.sql
   rm /tmp/matecat.sql
